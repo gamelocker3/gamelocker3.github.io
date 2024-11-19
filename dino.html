@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Dino Mobile Manual</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #e0f7fa;
+            font-family: 'Arial', sans-serif;
+            padding: 10px;
+        }
+        #game {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 200px;
+            background-color: #fff;
+            overflow: hidden;
+            border-radius: 15px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+            border: 2px solid #00796b;
+        }
+        #dino {
+            position: absolute;
+            bottom: 0;
+            width: 40px;
+            height: 40px;
+            background-image: url('dino.png');
+            background-size: cover;
+        }
+        #cactus, #banteng, #tulang, #thrownBone {
+            position: absolute;
+            bottom: 0;
+            background-size: cover;
+        }
+        #cactus {
+            width: 30px;
+            height: 30px;
+            background-image: url('kaktus.png');
+        }
+        #banteng {
+            width: 80px;
+            height: 40px;
+            background-image: url('banteng.gif');
+            display: none;
+            transform: translateX(-50%);
+        }
+        #tulang {
+            width: 20px;
+            height: 20px;
+            top: 30px;
+            background-image: url('tulang.png');
+            display: none;
+        }
+        #thrownBone {
+            width: 20px;
+            height: 20px;
+            background-image: url('tulang.png');
+            display: none;
+            bottom: 0;
+        }
+
+        #controls {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 400px;
+            margin-top: 10px;
+        }
+
+        #jumpBtn, #moveBtn, #throwBtn {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+            flex: 1;
+        }
+        #jumpBtn {
+            background-color: blue;
+        }
+        #moveBtn {
+            background-color: green;
+        }
+        #throwBtn {
+            background-color: red;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            padding: 0;
+        }
+        #jumpBtn:hover {
+            background-color: darkblue;
+        }
+        #moveBtn:hover {
+            background-color: darkgreen;
+        }
+        #throwBtn:hover {
+            background-color: darkred;
+        }
+        #score {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #inventory {
+            font-size: 24px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Skor: 0</div>
+    <div id="inventory">Inventory: </div>
+    <div id="game">
+        <div id="dino"></div>
+        <div id="cactus"></div>
+        <div id="banteng"></div>
+        <div id="tulang"></div>
+        <div id="thrownBone"></div>
+    </div>
+    <div id="controls">
+        <button id="jumpBtn"></button>
+        <button id="moveBtn"></button>
+        <button id="throwBtn"></button>
+    </div>
+
+    <script>
+        const dino = document.getElementById('dino');
+        const cactus = document.getElementById('cactus');
+        const banteng = document.getElementById('banteng');
+        const tulang = document.getElementById('tulang');
+        const thrownBone = document.getElementById('thrownBone');
+        const jumpBtn = document.getElementById('jumpBtn');
+        const moveBtn = document.getElementById('moveBtn');
+        const throwBtn = document.getElementById('throwBtn');
+        const scoreText = document.getElementById('score');
+        const inventory = document.getElementById('inventory');
+
+        let isJumping = false;
+        let isMoving = false;
+        let cactusPosition = 400;
+        let bantengPosition = 400;
+        let tulangPosition = 400;
+        let cactusMoveInterval = null;
+        let score = 0;
+        let inventoryCount = 0;
+
+        function jump() {
+            if (isJumping) return;
+            isJumping = true;
+            let position = 0;
+            let upInterval = setInterval(() => {
+                if (position >= 150) {
+                    clearInterval(upInterval);
+                    let downInterval = setInterval(() => {
+                        if (position <= 0) {
+                            clearInterval(downInterval);
+                            isJumping = false;
+                        }
+                        position -= 5;
+                        dino.style.bottom = position + 'px';
+                    }, 20);
+                }
+                position += 5;
+                dino.style.bottom = position + 'px';
+            }, 20);
+        }
+
+        function startMoveCactus() {
+            if (cactusMoveInterval || isMoving) return;
+            isMoving = true;
+            cactusMoveInterval = setInterval(() => {
+                cactusPosition -= 10;
+                cactus.style.left = cactusPosition + 'px';
+
+                if (cactusPosition <= 0) {
+                    cactusPosition = 400;
+                    score++;
+                    scoreText.innerText = 'Skor: ' + score;
+
+                    if (score % 5 === 0) {
+                        banteng.style.display = 'block';
+                        moveBanteng();
+                    } else {
+                        banteng.style.display = 'none';
+                    }
+                }
+
+                if (detectCollision(dino, cactus)) {
+                    handleCollision();
+                }
+            }, 100);
+
+            spawnTulang();
+        }
+
+        function stopMoveCactus() {
+            if (cactusMoveInterval) {
+                clearInterval(cactusMoveInterval);
+                cactusMoveInterval = null;
+            }
+            isMoving = false;
+        }
+
+        function moveBanteng() {
+            bantengPosition = 400;
+            banteng.style.left = bantengPosition + 'px';
+
+            let bantengInterval = setInterval(() => {
+                bantengPosition -= 5;
+                banteng.style.left = bantengPosition + 'px';
+
+                if (bantengPosition <= 0) {
+                    banteng.style.display = 'none';
+                    clearInterval(bantengInterval);
+                }
+
+                if (detectCollision(dino, banteng)) {
+                    handleCollision();
+                }
+            }, 100);
+        }
+
+        function spawnTulang() {
+            tulangPosition = 400;
+            tulang.style.left = tulangPosition + 'px';
+            tulang.style.display = 'block';
+
+            let tulangInterval = setInterval(() => {
+                tulangPosition -= 2;
+                tulang.style.left = tulangPosition + 'px';
+
+                if (tulangPosition <= 0) {
+                    tulang.style.display = 'none';
+                    clearInterval(tulangInterval);
+                }
+
+                if (detectCollision(dino, tulang)) {
+                    inventoryCount++;
+                    inventory.innerText = 'Inventory: ' + '\uD83D\uDC80'.repeat(inventoryCount);
+                    tulang.style.display = 'none';
+                    clearInterval(tulangInterval);
+                }
+            }, 100);
+        }
+
+        function throwBone() {
+            if (inventoryCount <= 0) return;
+
+            inventoryCount--;
+            inventory.innerText = 'Inventory: ' + '\uD83D\uDC80'.repeat(inventoryCount);
+
+            let bonePosition = dino.offsetLeft + 40;
+            thrownBone.style.left = bonePosition + 'px';
+            thrownBone.style.bottom = '0px';
+            thrownBone.style.display = 'block';
+
+            let boneInterval = setInterval(() => {
+                bonePosition += 10;
+                thrownBone.style.left = bonePosition + 'px';
+
+                if (bonePosition > 400) {
+                    clearInterval(boneInterval);
+                    thrownBone.style.display = 'none';
+                }
+
+                if (detectCollision(thrownBone, banteng)) {
+                    banteng.style.backgroundImage = "url('dino-dead.png')";
+                    setTimeout(() => {
+                        banteng.style.display = 'none';
+                        banteng.style.backgroundImage = "url('banteng.gif')";
+                    }, 1000);
+                    clearInterval(boneInterval);
+                    thrownBone.style.display = 'none';
+                    
+                    score += 7;
+                    scoreText.innerText = 'Skor: ' + score;
+                }
+            }, 50);
+        }
+
+        function detectCollision(dino, obstacle) {
+            const dinoRect = dino.getBoundingClientRect();
+            const obstacleRect = obstacle.getBoundingClientRect();
+            return !(
+                dinoRect.top > obstacleRect.bottom ||
+                dinoRect.bottom < obstacleRect.top ||
+                dinoRect.left > obstacleRect.right ||
+                dinoRect.right < obstacleRect.left
+            );
+        }
+
+        function handleCollision() {
+            score--;
+            scoreText.innerText = 'Skor: ' + score;
+            dino.style.backgroundImage = "url('dino-dead.png')";
+            setTimeout(() => {
+                dino.style.backgroundImage = "url('dino.png')";
+            }, 1000);
+        }
+
+        // Event listeners
+        jumpBtn.addEventListener('click', jump);
+        moveBtn.addEventListener('mousedown', startMoveCactus);
+        moveBtn.addEventListener('mouseup', stopMoveCactus);
+        moveBtn.addEventListener('touchstart', startMoveCactus);
+        moveBtn.addEventListener('touchend', stopMoveCactus);
+        throwBtn.addEventListener('click', throwBone);
+    </script>
+</body>
+</html>
